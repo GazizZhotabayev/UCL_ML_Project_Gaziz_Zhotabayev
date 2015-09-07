@@ -1,0 +1,159 @@
+%the following routine produces a full data table for a single station
+
+%the end result is a MATLAB table object with the two sets of two carriages
+%joined into one data row
+
+%data should be imported station by station (i.e. this routine should be
+%run separately for each station, changing the path names to the variables
+%data_to_import1 and data_to_import2 as required)
+
+%import the data
+data_to_import1 = 'Magenta_Laindon_Car1_n_2_Towards_Shoeburyness_Clean';
+data_to_import2 = 'Magenta_Laindon_Car3_n_4_Towards_Shoeburyness_Clean';
+%data_to_import3 = 'Magenta_Laindon_Towards_Shoeburyness_Transformed_PrevStations_Carriage1';
+%data_to_import4 = 'Magenta_Laindon_Towards_Shoeburyness_Transformed_PrevStations_Carriage1';
+
+data_table1 = readtable(['/Users/gazizzhotabayev/Dropbox/BDI Data Files/Latest Extracts/Towards Shoeburyness/' data_to_import1 '.csv']);
+data_table2 = readtable(['/Users/gazizzhotabayev/Dropbox/BDI Data Files/Latest Extracts/Towards Shoeburyness/' data_to_import2 '.csv']);
+%data_table3 = readtable(['/Users/gazizzhotabayev/Dropbox/BDI Data Files/Latest Extracts/Towards Shoeburyness/' data_to_import3 '.csv']);
+%data_table4 = readtable(['/Users/gazizzhotabayev/Dropbox/BDI Data Files/Latest Extracts/Towards Shoeburyness/' data_to_import4 '.csv']);
+
+%convert dates from text to days since January 0000
+data_table1.route_time = datenum(data_table1.route_time);
+data_table2.route_time = datenum(data_table2.route_time);
+
+%potential discrepancy if the data sets for the different carriages do not
+%align
+if size(data_table1,1) ~= size(data_table2,1)
+    disp('DATA DOES NOT LINE UP');
+end;
+%append the two tables
+data = [data_table1; data_table2];
+
+%remove irrelevant features of the data
+data.software_version = []; %irrelevant element, same for all data
+data.ldw_vehicle_mass = []; %irrelevant element, empty column
+data.latitude = []; %latitude values are redundant, equivalent to 'station'
+data.longitude = []; %longitude values are redundant, equivalent to 'station'
+data.equivalent_passenger_count = []; %this is simply total_load divided by 70
+data.inserted_date = []; %time when data was extracted
+
+%sort table in ascending order of route_time
+data = sortrows(data,{'route_time'},{'ascend'});
+
+%rename variables
+data.Properties.VariableNames{'dmos_a_load'}='carriage1';
+data.Properties.VariableNames{'mos_load'}='carriage2';
+data.Properties.VariableNames{'ptos_load'}='carriage3';
+data.Properties.VariableNames{'dmos_b_load'}='carriage4';
+
+%if there is an equal number of data points and also the data points line
+%up to within t seconds of each other, then the data sets correspond
+
+%i.e. the data points describe the same train and carriage set;
+%note that the value of t depends on the frequency with which tables run
+%at each station (which can be obtained from the C2C timetable online)
+
+%note: t is computed in days, so adjust as necessary
+t = 90/(24*60*60);
+
+%go over all the data points and identify the ones that refer to the same
+%train (within a short time span (t seconds) of each other and same
+%driver ID) and the same carriage set (same criteria, but with the addition
+%that the unit number must also be the same)
+
+data.train_id = zeros(size(data,1),1);
+
+start_count = 1;
+delete_count = 0;
+mistake_count = 0;
+to_delete = [];
+while start_count < size(data,1);
+    
+    %the following while loop finds all the data points that fall within a
+    %time-span of t from the data point at start_count
+    count = start_count;
+    while data.route_time(count+1)-data.route_time(start_count) <= t
+        count = count + 1;
+        if count >= size(data,1)
+            break;
+        end;
+    end;
+    
+    %the outer for loop is needed as we may get different trains that run
+    %very close to each other
+    driver = unique(data.driver_id(start_count:count));
+    for n = 1:length(driver)
+        
+        %find all data points with the same driver
+        r = find(ismember(data.driver_id(start_count:count),driver{n}));
+        r = r + start_count - 1;
+        
+        %in the following if statement we check that this is indeed one
+        %train by looking at the route ID, trains very close to each other
+        %cannot have same driver, but different routes. if they do, a
+        %mistake has occured
+        if length(unique(data.route_id(r)))>1
+            disp('ERROR! SAME DRIVER, DIFFERENT ROUTES');
+            return;
+        end;
+        
+        %find all the units (carriage_sets) for that train
+        carriage_sets = unique(data.unit_number(r));
+        for m = 1:length(carriage_sets)
+            s = find(data.unit_number(r)==carriage_sets(m));
+            s = r(s);
+            
+            %there should be at most one unique carriage set identifier
+            %(unit number) per train and thus exactly 2 data points
+            %if a mistake occurs, perhaps need to alter time t
+            if length(s) ~= 2
+                disp('MISTAKE');
+                %we delete these mistakes
+                mistake_count = mistake_count + length(s);
+                %delete_count = delete_count + length(s) - 1;
+                to_delete = [to_delete; s];
+            else
+                %we join the data points into one if they represent the same
+                %carriage set of the same train
+                data.carriage1(s(1),:) = data.carriage1(s(1),:)+data.carriage1(s(2),:);
+                data.carriage2(s(1),:) = data.carriage2(s(1),:)+data.carriage2(s(2),:);
+                data.carriage3(s(1),:) = data.carriage3(s(1),:)+data.carriage3(s(2),:);
+                data.carriage4(s(1),:) = data.carriage4(s(1),:)+data.carriage4(s(2),:);
+        
+                %we also make sure we delete the duplicates later on
+                %delete_count = delete_count + 1;
+                %to_delete(delete_count) = s(2);
+                to_delete = [to_delete; s(2)];
+            end;
+            
+        end;
+    end;
+    
+    if count >= size(data,1)
+        break;
+    end;
+    
+    %the following if statement checks whether there are a lot of points
+    %within a time-span of t of each other, in which case there is a
+    %potential for a mistake, perhaps check value of t
+    if  data.route_time(count+1)-data.route_time(count) <= t
+        disp('POTENTIAL ERROR - TRAINS VERY CLOSE TO EACH OTHER');
+        return;
+    end;
+    
+    start_count = count + 1;
+    
+end;
+
+%now we must delete all the duplicate data
+%(may need to comment out this line when troubleshooting)
+data(to_delete,:) = [];
+
+%compute total_load correctly
+data.total_load = data.carriage1 + data.carriage2 + data.carriage3 + data.carriage4;
+
+clear carriage_sets count data_table1 data_table2 data_to_import1 ...
+    data_to_import2 delete_count driver m mistake_count n r s ...
+    start_count t to_delete train_number
+
