@@ -1,0 +1,33 @@
+function [ data ] = add_time( data )
+%add time of day, day of week and weekday features
+data.time = 24*mod(data.route_time,1);
+%datenum function has Friday as 0 modulo 7
+data.day = floor(mod(mod(data.route_time,7) + 5,7));
+data.day(data.day==0)=7;
+data.weekday = data.day > 5;
+%add month of year
+data.months = month(data.route_time);
+data.offpeak = and(data.time>9.5,data.time<2);
+ data.hour=round(data.time);
+ data.hour(data.hour==24)=0;
+data.prev_day1 = NaN(size(data,1),1);
+data.prev_week1 = NaN(size(data,1),1);
+data.prev_day2 = NaN(size(data,1),1);
+data.prev_week2 = NaN(size(data,1),1);
+data.prev_day3 = NaN(size(data,1),1);
+data.prev_week3 = NaN(size(data,1),1);
+data.prev_day4 = NaN(size(data,1),1);
+data.prev_week4 = NaN(size(data,1),1);
+for n = 1:size(data,1)
+    [m,ind_day]=min(abs(data.route_time(n)-1-data.route_time));
+    [m,ind_week]=min(abs(data.route_time(n)-7-data.route_time));
+    data.prev_day1(n) = data.carriage1(ind_day);
+    data.prev_day2(n) = data.carriage2(ind_day);
+    data.prev_day3(n) = data.carriage3(ind_day);
+    data.prev_day4(n) = data.carriage4(ind_day);
+    data.prev_week1(n) = data.carriage1(ind_week);
+    data.prev_week2(n) = data.carriage2(ind_week);
+    data.prev_week3(n) = data.carriage3(ind_week);
+    data.prev_week4(n) = data.carriage4(ind_week);
+end;
+end
