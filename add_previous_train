@@ -1,0 +1,32 @@
+function [ data ] = add_prev_train( data,t )
+%now we add the previous train's weights
+data.prev_train1 = cell(size(data,1),1);
+data.prev_train2 = cell(size(data,1),1);
+data.prev_train3 = cell(size(data,1),1);
+data.prev_train4 = cell(size(data,1),1);
+%data.prev_train_total = cell(size(data,1),1);
+data.prev_train_average = cell(size(data,1),1);
+%t = 4/24;
+
+%note that the 'data' table has to be sorted in ascending route time
+data = sortrows(data,{'route_time'},{'ascend'});
+
+%X holds the time between the trains
+X = data.route_time(2:size(data,1)) - data.route_time(1:size(data,1)-1);
+
+%we find the data points that satisfy the time limit
+X = find(X <= t);
+
+temp=num2cell(data.carriage1);
+data.prev_train1(X+1) = temp(X);
+temp=num2cell(data.carriage2);
+data.prev_train2(X+1) = temp(X);
+temp=num2cell(data.carriage3);
+data.prev_train3(X+1) = temp(X);
+temp=num2cell(data.carriage4);
+data.prev_train4(X+1) = temp(X);
+
+data.prev_train_total = cellfun(@(a,b,c,d){a+b+c+d},data.prev_train1,data.prev_train2,data.prev_train3,data.prev_train4);
+data.prev_train_average = cellfun(@(a,b){a/b},data.prev_train_total,num2cell(4*ones(size(data,1),1)));
+end
+
