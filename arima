@@ -1,0 +1,32 @@
+k=250;
+
+count=0;
+tic
+for n = 10676:13344
+    count = count+1;
+    %x = autocorr(x(n-k:n-1));
+    %[~,~,rnk] = unique(abs(x));
+    %L = length(x)-1;
+    %ar_coefs = [1+find(rnk==L) 1+find(rnk==L-1)];
+    %x = parcorr(x(n-k:n-1));
+    %[~,~,rnk] = unique(abs(x));
+    %ma_coefs = [1+find(rnk==L) 1+find(rnk==L-1)];data(
+    prev_value(count) = forecast(estimate(arima('ARLags',ar_coefs,'MALags',ma_coefs),x(n-k:n-1)),1);
+    %prev_value(count) = forecast(estimate(arima('ARLags',[1],'MALags',[1 2], 'Seasonality',34),x(n-k:n-1)),1);
+    if prev_value(count)>4*mean(x(n-1:-1:n-1-k));
+        prev_value(count)=mean(x(n-1:-1:n-1-k));
+    end;
+    error(count) = abs(data.carriage1(n)-prev_value(count))
+end;
+toc
+
+%figure
+%hold on
+%plot(prev_value(1:50),'r');
+%%plot(x(10676:10676+49));
+%ylim([0 10^3])
+
+%figure
+%autocorr(diff(diff(x(10676:10676+250),1),1),100)
+%figure
+%parcorr(diff(diff(x,34),1),100);
