@@ -1,0 +1,34 @@
+%Random forest algorithm
+
+L = 1;
+%k=1;
+%tree_num=50;
+%[ train_set,train_labels,test_set,test_labels,cat_list,data_to_use ]=prepare_data( data,0.8,'missing');
+tic
+B = TreeBagger(tree_num,train_set,train_labels(:,k),'CategoricalPredictors',cat_list,...
+    'Method','regression','OOBVarImp','on','OOBPred','on','MinLeaf',5);
+toc
+for n = 1:L
+    prediction = predict(B,test_set);
+    err(:,n)= abs(prediction - test_labels(:,k));
+end;
+toc
+
+%tic
+%B = TreeBagger(tree_num,in(1:10600,:),out(1:10600),...
+%    'Method','regression','OOBVarImp','on','OOBPred','on','MinLeaf',5);
+%toc
+%prediction = predict(B,in(10601:end,:));
+%err = abs(prediction-out(10601:end));
+
+disp(['the mean absolute error for a forest is ' num2str(mean(err'))]);
+
+%code taken from http://uk.mathworks.com/help/stats/ensemble-methods.html#bsvk93c
+figure
+bar(B.OOBPermutedVarDeltaError);
+for n = 1:size(data_to_use,2)
+    x_bar{n} = data_to_use.Properties.VariableNames{n};
+end;
+%set(gca,'XTickLabel',x_bar,'XTick',1:numel(x_bar));
+xlabel 'Feature' ;
+ylabel 'Out-of-Bag Feature Importance';
