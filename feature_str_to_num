@@ -1,0 +1,57 @@
+function [ data ] = feature_str_to_num( data )
+%Function converts all the categorical string features into
+%numerical representations
+
+for n = 1:size(data,2)
+    % identify the categorical string features
+    
+    %remember the feature name to replace it later
+    feature_name = data.Properties.VariableNames{n};
+    
+    if iscell(data{1,n})
+        
+        %find a representative of that feature to identify whether it is a
+        %string feature
+        
+        rep_count = 0;
+        while  1>0
+            rep_count = rep_count+1;
+            representative = data{find(cellfun(@isempty,data{:,n})==0),n}{rep_count};
+            if isnan(representative)==0
+                break;
+            end;
+        end;
+        
+        if ischar(representative) == 1
+            
+            %identify positions of missing values
+            miss = find(cellfun(@isempty,data{:,n})==1);
+            if length(miss)>0
+                data{miss,n} = {'NAN'};
+            end;
+            
+            [temp, map_list ] = grp2idx(data{:,n});
+            temp(miss) = NaN;
+            
+            if or(n>1, n<size(data,2))
+                
+                %stick n in the middle
+                data = [data(:,1:n-1) array2table(temp) data(:,n+1:end)];
+            elseif n==1
+                
+                %stick n in the beginning
+                data = [array2table(temp) data(:,2:end)];
+            else
+                
+                %stick n at the end
+                data = [data(:,1:end-1) array2table(temp)];
+            end;
+        end;    
+    end;
+    
+    %replace the feature name
+    data.Properties.VariableNames{n} = feature_name;
+
+end;
+end
+
