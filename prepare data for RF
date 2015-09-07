@@ -1,0 +1,63 @@
+function [ train_set,train_labels,test_set,test_labels,cat_list,data_to_use ] = prepare_data( data,train_percent,method )
+%Prepare data to import into RF algorithm
+%[ train_set,train_labels,test_set,test_labels,cat_list,data_to_use ] = prepare_data( data,0.8,'missing');
+data_to_use = data;
+
+%set the fraction of the data to be used for training
+%train_percent = 0.9;
+train_size = floor(train_percent*size(data_to_use,1));
+
+%identify the labels
+train_labels(:,1) = data_to_use.carriage1(1:train_size);
+train_labels(:,2) = data_to_use.carriage2(1:train_size);
+train_labels(:,3) = data_to_use.carriage3(1:train_size);
+train_labels(:,4) = data_to_use.carriage4(1:train_size);
+test_labels(:,1) = data_to_use.carriage1(train_size+1:end);
+test_labels(:,2) = data_to_use.carriage2(train_size+1:end);
+test_labels(:,3) = data_to_use.carriage3(train_size+1:end);
+test_labels(:,4) = data_to_use.carriage4(train_size+1:end);
+data_to_use.carriage1 = [];
+data_to_use.carriage2 = [];
+data_to_use.carriage3 = [];
+data_to_use.carriage4 = [];
+data_to_use.total_load = [];
+
+%identify the features to be deleted
+delete_name_list = data_to_use.Properties.VariableNames;
+disp(delete_name_list);
+prompt = 'enter the numbers of the features to be deleted in a single array  ';
+delete_list = input(prompt);
+%delete_list = [1 5 11 25];
+data_to_use(:,delete_list) = [];
+
+%deal with missing values
+data_to_use = feature_missing(data_to_use,method);
+%replace categorical with numerical representations
+data_to_use = feature_str_to_num(data_to_use);
+%encode string data
+data_to_use = feature_string_encode(data_to_use);
+
+%shuffle the data
+%data_to_use = data_to_use(randperm(size(data_to_use,1)),:);
+
+%pull the training set
+train_set = num2cell(table2array(data_to_use(1:train_size,:)));
+train_set = cell2mat(train_set);
+
+%pull the test set
+test_set = num2cell(table2array(data_to_use(train_size+1:end,:)));
+test_set = cell2mat(test_set);
+
+%identify the categorical features
+cat_name_list = data_to_use.Properties.VariableNames;
+disp(cat_name_list);
+prompt = 'enter the numbers of the categorical variables in a single array  ';
+L = input(prompt);
+cat_list = zeros(size(data_to_use,2),1);
+cat_list(L) = 1;
+cat_list = logical(cat_list);
+%cat_list = [1 2 12 13 14 15 16];
+
+%clear cat_list cat_name_list delete_list delete_name_list prompt train_size train_percent
+
+end
