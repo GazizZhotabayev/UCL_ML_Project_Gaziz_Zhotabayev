@@ -1,0 +1,92 @@
+function [ data ] = feature_missing( data,method )
+%Function deals withthe missing data values by substituting them as
+%appropriate to median/mode of non-missing values or with the NaN format
+%(for numeric values only)
+
+%method is a string = 'average' or 'missing'
+
+for n = 1:size(data,2)
+   
+    %missing values can only occur in cell structures
+    
+    if iscell(data{1,n})
+        
+        temp = data{:,n};
+        
+        %we identify the missing values
+        miss = find(cellfun(@isempty,temp)==1);
+        
+        %and delete them
+        temp(miss) = [];
+        
+        %remember the feature name to replace it later
+        feature_name = data.Properties.VariableNames{n};
+        
+        %next we compute the median if the feature is numeric and the mode
+        %if the feature is a string
+        
+        %first we must decide whether the feature is numeric or a string
+        %to do so we find any non-empty member of the feature vector
+        rep_count = 0;
+        L = data{find(and(cellfun(@isempty,data{:,n})==0,~cellfun(@(V) any(isnan(V(:))), data{:,n}))),n};
+        if size(L,1)>0
+            while  1>0
+                rep_count = rep_count+1;
+                representative = L{rep_count};
+                if or(rep_count>length(L),isnan(representative))==0
+                    break;
+                end;
+            end;
+        end;
+        
+        %representative = data{find(cellfun(@isempty,data{:,n})==0,1),n}{1};
+        
+        %if the feature is numeric
+        if isnumeric(representative)
+            
+            if strcmp(method,'average') == 1
+                %compute the median
+                med = median(table2array(cell2table(temp)));
+                %replace the missing values in the data with the median
+                data{:,n}(miss) = {med};
+            elseif strcmp(method,'missing') == 1
+                %transform the numbers to NaN values
+                data{:,n}(miss) = {NaN};
+            end;
+            
+            %finally convert the feature into a double and place it into
+            %the data table and delete the feature in non-double format
+            if or(n>1, n<size(data,2))
+                %stick n in the middle
+                data = [data(:,1:n-1) array2table(cell2mat(data{:,n})) data(:,n+1:end)];
+            elseif n==1
+                %stick n in the beginning
+                data = [array2table(cell2mat(data{:,n})) data(:,2:end)];
+            else
+                %stick n at the end
+                data = [data(:,1:end-1) array2table(cell2mat(data{:,n}))];
+            end;
+
+        else
+            %we are dealing with string features
+            md = [];
+            
+            if strcmp(method,'average') == 1
+                %use numerical representations of features to find the mode
+                [temp_num, map_list] = grp2idx(temp);
+                md_num = mode(temp_num);
+                md = map_list{md_num};
+            elseif strcmp(method,'missing') == 1
+                %we keep them missing and use feature_string_to_num
+            end;
+            
+            %replace the missing values in the data
+            data{:,n}(miss) = {md};
+        end;
+        
+        %replace the feature name
+        data.Properties.VariableNames{n} = feature_name;
+    end;
+end;
+
+clear temp temp_num n representative miss med md_num md map_list feature_name
