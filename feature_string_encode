@@ -1,0 +1,26 @@
+function [ data ] = feature_string_encode( data )
+%Function encodes numeric categorical features as extra 0/1 features
+%using dummy coding (ensure all categorical features are non-zero)
+
+%input data should be all numerical
+
+%identify the features to be encoded
+encode_list = data.Properties.VariableNames;
+disp(encode_list);
+prompt = 'enter the numbers of the features to be encoded in a single array';
+feature_list = input(prompt);
+
+for n = 1:length(feature_list)
+    
+    L1 = size(data,2);
+    data = [data array2table(dummyvar(table2array(data(:,feature_list(n)))))];
+    L2 = size(data,2);
+    feature_name = data.Properties.VariableNames{feature_list(n)};
+    
+    add_feature_count = 0;
+    for m = 1:(L2-L1)
+        add_feature_count = add_feature_count + 1;
+        data.Properties.VariableNames{L1+m} ...
+            = strcat(feature_name,num2str(add_feature_count));
+    end;
+end;
