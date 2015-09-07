@@ -1,0 +1,65 @@
+%add previous trains, temporal difference etc.
+
+%data = upminster;
+in = [];
+
+%add num_lag lags
+%for k = 1:20
+k=10;
+in1 = [];
+num_lag=k;
+%num_diff = 7;
+%x = NaN*ones(size(data,1),num_diff);
+for n =size(data,1):-1:num_lag+1
+    time_series = data.carriage1(n-1:-1:n-num_lag)';
+    %x = parcorr(time_series);
+    %x = x(2:end);
+    %pacf_feature = find(abs(x)==max(abs(x)))-1;
+    %y = parcorr(time_series);
+    %y = y(2:end);
+    %acf_feature = find(abs(y)==max(abs(y)))-1;
+    %z= [pacf_feature acf_feature time_series];
+    %in = [ z ; in];
+    %in1 = [time_series data.route_time(n); in1];
+    in1 = [time_series; in1];
+    %data.Properties.VariableNames{end} = ['prev' num2str(n) 'train'];
+end;
+%end;
+
+%add past num_lag hours features
+%num_lag=k;
+in2=[];
+%for n =size(data,1):-1:num_lag+1
+%    for m = 1:8
+%        time_series = find(and(data.route_time(n)-data.route_time<=m/24,data.route_time(n)-data.route_time>(m-1)/24));
+%        if length(time_series)>0
+%            x(m) = mean(data.carriage1(time_series));
+%        else
+%            x(m) = NaN;
+%        end;
+%    %data.Properties.VariableNames{end} = ['prev' num2str(n) 'train'];
+%    end;
+%    in2 = [ x ; in2];
+%end;
+in=[in1 in2];
+out = data.carriage1(num_lag+1:size(data,1));
+
+%add num_diff differences of previous trains
+num_diff = 5;
+for n = 1:num_diff
+    y = data.carriage1(n+1:end-1)-data.carriage1(1:end-n-1);
+    L = length(y)-length(in)+1;
+    y = y(L:end);
+    in = [in y];
+end;
+in = [in data.hour(num_lag+1:end)];
+in = [in data.day(num_lag+1:end)];
+%tic
+B = TreeBagger(tree_num,in(1:10635,:),out(1:10635),'CategoricalPredictors',[size(in,2):size(in,2)],...
+    'Method','regression','OOBVarImp','on','OOBPred','on','MinLeaf',5);
+toc
+prediction = predict(B,in(10636:end,:));
+err = abs(prediction-out(10636:end));
+disp(['mean error for series length = ' num2str(num_diff) ' is ' num2str(mean(err))]);
+
+
