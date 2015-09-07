@@ -1,0 +1,107 @@
+function [ data2 ] = add_prev_station( data1, data2,t1,t2 )
+%Function attaches previous station's weights
+
+%data2 represents the current station,data1 represents the previous station
+%t1 is the time for a train between stations, t2 is the time between two
+%trains on the same station
+
+%same train weight at previous station
+data2.prev_station1 = cell(size(data2,1),1);
+data2.prev_station2 = cell(size(data2,1),1);
+data2.prev_station3 = cell(size(data2,1),1);
+data2.prev_station4 = cell(size(data2,1),1);
+data2.prev_station_total = cell(size(data2,1),1);
+data2.prev_station_average = cell(size(data2,1),1);
+
+%change for the same train between new and previous station
+%data2.prev_station_change1 = cell(size(data2,1),1);
+%data2.prev_station_change2 = cell(size(data2,1),1);
+%data2.prev_station_change3 = cell(size(data2,1),1);
+%data2.prev_station_change4 = cell(size(data2,1),1);
+%data2.prev_station_total_change = cell(size(data2,1),1);
+%data2.prev_station_average_change = cell(size(data2,1),1);
+
+count = 0;
+for n = 1 : size(data2,1)
+    %we find the indices of those data points in the previous station's
+    %data that represent trains very close to our train
+    L = ones(size(data1,1),1) * data2.route_time(n) - data1.route_time;
+    x = find(and(L <= t1, L > 0));
+    
+    %next we find those data points that have the same driver as the one at
+    %our station
+    if length(x) > 0
+        x = find(ismember(data1.driver_id(x),data2.driver_id(n))) + x(1) - 1;
+    
+    end;
+    
+    if length(x) > 0
+        %finally, we ensure that the data points have the same route id
+        x = find(ismember(data1.route_id(x),data2.route_id(n))) + x(1) - 1;
+    end;
+    
+    
+    if length(x) == 1
+        
+        %we found the previous station - it is x
+        count = count + 1;
+        data2.prev_station1{n} = data1.carriage1(x);
+        data2.prev_station2{n} = data1.carriage2(x);
+        data2.prev_station3{n} = data1.carriage3(x);
+        data2.prev_station4{n} = data1.carriage4(x);
+        data2.prev_station_total{n} = data1.total_load(x);
+        data2.prev_station_average{n} = data1.total_load(x)/4;
+        
+        %data2.prev_station_change1{n} = data2.carriage1(n) - data1.carriage1(x);
+        %data2.prev_station_change2{n} = data2.carriage2(n) - data1.carriage2(x);
+        %data2.prev_station_change3{n} = data2.carriage3(n) - data1.carriage3(x);
+        %data2.prev_station_change4{n} = data2.carriage4(n) - data1.carriage4(x);
+        %data2.prev_station_total_change{n} = data2.total_load(n) - data1.total_load(x);
+        %data2.prev_station_average_change{n} = data2.total_load(n)/4 - data1.total_load(x)/4;
+        
+    end;
+    
+end;
+
+%finally we find all the previous train at the previous station values
+%previous train weight at previous station
+data2.prev_train_station1 = cell(size(data2,1),1);
+data2.prev_train_station2 = cell(size(data2,1),1);
+data2.prev_train_station3 = cell(size(data2,1),1);
+data2.prev_train_station4 = cell(size(data2,1),1);
+data2.prev_train_station_total = cell(size(data2,1),1);
+data2.prev_train_station_average = cell(size(data2,1),1);
+
+%change for the previous train between new and previous station
+data2.prev_train_station_change1 = cell(size(data2,1),1);
+data2.prev_train_station_change2 = cell(size(data2,1),1);
+data2.prev_train_station_change3 = cell(size(data2,1),1);
+data2.prev_train_station_change4 = cell(size(data2,1),1);
+data2.prev_train_station_total_change = cell(size(data2,1),1);
+data2.prev_train_station_average_change = cell(size(data2,1),1);
+
+%note that the 'data2' table has to be sorted in ascending route time
+data2 = sortrows(data2,{'route_time'},{'ascend'});
+
+%x holds the time between the trains
+x = data2.route_time(2:size(data2,1)) - data2.route_time(1:size(data2,1)-1);
+
+%we find the data points that satisfy the time limit of being a previous
+%train
+x = find(x <= t2);
+
+data2.prev_train_station1(x+1) = data2.prev_station1(x);
+data2.prev_train_station2(x+1) = data2.prev_station2(x);
+data2.prev_train_station3(x+1) = data2.prev_station3(x);
+data2.prev_train_station4(x+1) = data2.prev_station4(x);
+data2.prev_train_station_total = cellfun(@(a,b,c,d){a+b+c+d},data2.prev_train_station1,data2.prev_train_station2,data2.prev_train_station3,data2.prev_train_station4);
+data2.prev_train_station_average = cellfun(@(a,b){a/b},data2.prev_train_station_total,num2cell(4*ones(size(data2,1),1)));
+
+data2.prev_train_station_change1 = cellfun(@(a,b){a-b},data2.prev_train1,data2.prev_train_station1);
+data2.prev_train_station_change2 = cellfun(@(a,b){a-b},data2.prev_train2,data2.prev_train_station2);
+data2.prev_train_station_change3 = cellfun(@(a,b){a-b},data2.prev_train3,data2.prev_train_station3);
+data2.prev_train_station_change4 = cellfun(@(a,b){a-b},data2.prev_train4,data2.prev_train_station4);
+data2.prev_train_station_total_change = cellfun(@(a,b){a-b},data2.prev_train_total,data2.prev_train_station_total);
+data2.prev_train_station_average_change = cellfun(@(a,b){a/b},data2.prev_train_station_total_change,num2cell(4*ones(size(data2,1),1)));
+end
+
